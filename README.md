@@ -10,11 +10,11 @@ To create your own private copy of the spreadsheet and the automation script, cl
 **2. Authorization**
 Because the app interacts with your Gmail and Google Drive, you must grant permissions on the first run:
 
-Open your new spreadsheet copy.
+* Open your new spreadsheet copy.
 
-Click the **My Mail Merge** menu > Open My Mail Merge.
+* Click the **My Mail Merge** menu > Open My Mail Merge.
 
-Follow the Google prompts: Continue > Select Account > Advanced > Go to My Mail Merge (unsafe) > Allow.
+* Follow the Google prompts: Continue > Select Account > Advanced > Go to My Mail Merge (unsafe) > Allow.
 
 # Manual Setup (For Developers)
 If you prefer to build this into an existing sheet, follow these steps to use the source code provided in this repository:
@@ -35,36 +35,31 @@ If you prefer to build this into an existing sheet, follow these steps to use th
 **1. Prepare Your Spreadsheet**
 Ensure your headers are in Row 1. Your sheet should include columns for:
 
-**- Email Address**
-**- File Name** (Must include extension, e.g., invoice.pdf).
-- Any personalization fields like Name etc.
+* **Email Address**
+* **File Name** (Must include extension, e.g., invoice.pdf).
+* Any personalization fields like Name etc.
 
 **2. Configure the Sidebar**
 Open the sidebar from the **My Mail Merge** menu:
 
-**-Mapping**: Select your target columns from the dropdowns.
-**-Drive Folder ID**: Open your Google Drive folder and copy the ID from the URL.
-**-ID Location**: drive.google.com/drive/folders/**YOUR_FOLDER_ID_HERE**
-**-Reply-To**: Enter a manual email address where you want recipients to reply.
+* **Mapping**: Select your target columns from the dropdowns.
+* **Drive Folder ID**: Open your Google Drive folder and copy the ID from the URL.
+* **ID Location**: drive.google.com/drive/folders/**YOUR_FOLDER_ID_HERE**
+* **Reply-To**: Enter a manual email address where you want recipients to reply.
 
 **3. Personalize Your Message**
-Use {{Column Name}} syntax in the subject or message body.
-
-**-Example**: Hi {{Name}}, find your {{Month}} report attached.
-
-**-Formatting**: Press Enter to create new paragraphs; the script preserves your layout.
+* Use {{Column Name}} syntax in the subject or message body.
+* **Example**: Hi {{Name}}, find your {{Month}} report attached.
+* **Formatting**: Press Enter to create new paragraphs; the script preserves your layout.
 
 # Features
-**Save Settings**: Stores your subject, message, and folder ID for future sessions.
-
-**Send Test Email**: Sends a preview of the first data row to your own inbox.
-
-**Error Handling**: Flags missing files as "Error: File Not Found" in the Log Sent column.
+* **Save Settings**: Stores your subject, message, and folder ID for future sessions.
+* **Send Test Email**: Sends a preview of the first data row to your own inbox.
+* **Error Handling**: Flags missing files as "Error: File Not Found" in the Log Sent column.
 
 # Important Limits
-**Daily Quotas**: Personal accounts are limited to **100 emails/day**; Workspace accounts are limited to **2,000/day**.
-
-**Browser Issue**s: If the sidebar doesn't load, ensure you are **NOT** logged into **multiple Google accounts** or use an Incognito Window.
+* **Daily Quotas**: Personal accounts are limited to **100 emails/day**; Workspace accounts are limited to **2,000/day**.
+* **Browser Issue**s: If the sidebar doesn't load, ensure you are **NOT** logged into **multiple Google accounts** or use an Incognito Window.
 
 # Security & Privacy
 This is a **Container-Bound Script**. All data stays within your Google account. **No third-party servers** ever see your contacts or files.
