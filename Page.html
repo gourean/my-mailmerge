@@ -1,137 +1,150 @@
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu('My Mail Merge')
-      .addItem('Open My Mail Merge', 'showSidebar')
-      .addToUi();
-}
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 12px; font-size: 13px; color: #3c4043; margin-bottom: 60px; }
+    label { font-weight: bold; display: block; margin-top: 10px; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; }
+    textarea { white-space: pre-wrap; }
+    .btn-blue { background: #1a73e8; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+    .btn-outline { background: #fff; color: #1a73e8; border: 1px solid #dadce0; padding: 8px; width: 100%; border-radius: 4px; margin-top: 5px; cursor: pointer; }
+    .row { display: flex; gap: 8px; }
+    .col { flex: 1; }
+    .section { background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #eee; margin-top: 10px; }
+    .footer-status { position: fixed; bottom: 0; left: 0; width: 100%; background: #3c4043; color: white; padding: 10px; text-align: center; display: none; }
+    /* Adjusted help box to sit nicely above the textarea */
+    .help-box { background: #fef7e0; border: 1px solid #feefc3; padding: 8px; border-radius: 4px; margin-top: 4px; margin-bottom: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
 
-function showSidebar() {
-  const html = HtmlService.createHtmlOutputFromFile('Page')
-      .setTitle('My Mail Merge')
-      .setWidth(350);
-  SpreadsheetApp.getUi().showSidebar(html);
-}
+  <label style="margin-top:0">Target Email Column</label>
+  <select id="emailCol"><option value="">-- Select --</option></select>
 
-function getSheetHeaders() {
-  return SpreadsheetApp.getActiveSheet().getRange(1, 1, 1, SpreadsheetApp.getActiveSheet().getLastColumn()).getValues()[0];
-}
+  <label>File Name Column</label>
+  <select id="fileCol"><option value="">-- Select --</option></select>
 
-function saveSettings(config) {
-  PropertiesService.getUserProperties().setProperty('saved_config', JSON.stringify(config));
-  return "Settings saved!";
-}
+  <label>Drive Folder ID</label>
+  <input type="text" id="folderId" placeholder="Paste ID from URL">
 
-function loadSettings() {
-  const saved = PropertiesService.getUserProperties().getProperty('saved_config');
-  return saved ? JSON.parse(saved) : null;
-}
+  <div class="section">
+    <label style="margin-top:0">Mode:</label>
+    <div style="margin-top:5px">
+      <input type="radio" name="mode" value="attach" id="m1" checked style="width:auto"> <label for="m1" style="display:inline;font-weight:normal">Attach File</label><br>
+      <input type="radio" name="mode" value="link" id="m2" style="width:auto"> <label for="m2" style="display:inline;font-weight:normal">Link only</label>
+    </div>
+    <button class="btn-outline" onclick="getLinks()">🔗 Generate Links in Sheet</button>
+    <button class="btn-outline" style="color:#5f6368; border-color:#ccc" onclick="checkPerms()">🔍 Check Folder Permission</button>
+  </div>
 
-function clearLogs() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const logIdx = headers.indexOf("Log Sent");
-  const linkIdx = headers.indexOf("Drive Link");
+  <div class="row">
+    <div class="col"><label>CC</label><input type="text" id="cc"></div>
+    <div class="col"><label>BCC</label><input type="text" id="bcc"></div>
+  </div>
+
+  <label>Reply-To Email</label>
+  <input type="text" id="replyTo" placeholder="support@company.com">
+
+  <label>Subject Line</label>
+  <input type="text" id="subject">
+
+  <label>Message Body</label>
+  <div class="help-box">
+    <b>💡 Personalize:</b> Use <code>{{Column Name}}</code>. Press <b>Enter</b> for new paragraphs.
+  </div>
+  <textarea id="message" rows="6" placeholder="Type your message..."></textarea>
+
+  <button class="btn-blue" onclick="run(false)">🚀 RUN MY MAIL MERGE</button>
   
-  if (logIdx > -1) sheet.getRange(2, logIdx + 1, sheet.getLastRow()).clearContent();
-  if (linkIdx > -1) sheet.getRange(2, linkIdx + 1, sheet.getLastRow()).clearContent();
-  return "Logs cleared!";
-}
-
-function checkPermissions(folderId) {
-  if (!folderId) return "❌ Error: Please enter a Folder ID first.";
-  try {
-    const folder = DriveApp.getFolderById(folderId);
-    return "✅ Success! Access confirmed for: " + folder.getName();
-  } catch (e) {
-    return "❌ Access Denied: Check ID and ensure folder is shared with this account.";
-  }
-}
-
-function generateDriveLinks(folderId, fileNameCol) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  const fileColIdx = headers.indexOf(fileNameCol);
+  <div class="row">
+    <button class="btn-outline" onclick="run(true)">🧪 TEST EMAIL</button>
+    <button class="btn-outline" onclick="save()">💾 SAVE SETTINGS</button>
+  </div>
   
-  if (fileColIdx === -1) return "❌ Error: Could not find column: " + fileNameCol;
+  <button class="btn-outline" style="color:#d93025; border-color:#d93025; margin-top:15px" onclick="clearData()">🧹 Clear Sent Logs</button>
 
-  let linkColIdx = headers.indexOf("Drive Link");
-  if (linkColIdx === -1) {
-    linkColIdx = headers.length;
-    sheet.getRange(1, linkColIdx + 1).setValue("Drive Link");
-  }
+  <div id="statusFooter" class="footer-status">PROGRESS: <span id="prog">0/0</span></div>
 
-  const folder = DriveApp.getFolderById(folderId);
-  data.forEach((row, i) => {
-    const files = folder.getFilesByName(row[fileColIdx]);
-    if (files.hasNext()) {
-      const file = files.next();
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      sheet.getRange(i + 2, linkColIdx + 1).setValue(file.getUrl());
-    } else {
-      sheet.getRange(i + 2, linkColIdx + 1).setValue("File Not Found");
-    }
-  });
-  return "🔗 Links generated in 'Drive Link' column!";
-}
-
-function runMerge(config) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  const userEmail = Session.getActiveUser().getEmail();
-  
-  let logIdx = headers.indexOf("Log Sent");
-  if (logIdx === -1 && !config.isTest) {
-    logIdx = headers.length;
-    sheet.getRange(1, logIdx + 1).setValue("Log Sent");
-  }
-
-  const rowsToProcess = config.isTest ? [data[0]] : data;
-  const total = rowsToProcess.length;
-
-  rowsToProcess.forEach((row, i) => {
-    const recipient = config.isTest ? userEmail : row[headers.indexOf(config.emailCol)];
-    
-    // Rectify paragraphs: Convert newlines to HTML breaks
-    let body = config.messageBody.replace(/\n/g, '<br>');
-    
-    headers.forEach((h, idx) => {
-      const regex = new RegExp(`{{${h}}}`, "g");
-      body = body.replace(regex, row[idx]);
-    });
-
-    const options = {
-      cc: config.cc, 
-      bcc: config.bcc, 
-      replyTo: config.replyTo,
-      htmlBody: body,
-      attachments: []
+  <script>
+    window.onload = () => {
+      google.script.run.withSuccessHandler(headers => {
+        ['emailCol', 'fileCol'].forEach(id => {
+          const sel = document.getElementById(id);
+          headers.forEach(h => sel.add(new Option(h, h)));
+        });
+        google.script.run.withSuccessHandler(saved => {
+          if (saved) {
+            document.getElementById('emailCol').value = saved.emailCol || "";
+            document.getElementById('fileCol').value = saved.fileCol || "";
+            document.getElementById('folderId').value = saved.folderId || "";
+            document.getElementById('cc').value = saved.cc || "";
+            document.getElementById('bcc').value = saved.bcc || "";
+            document.getElementById('replyTo').value = saved.replyTo || "";
+            document.getElementById('subject').value = saved.subjectLine || "";
+            document.getElementById('message').value = saved.messageBody || "";
+          }
+        }).loadSettings();
+      }).getSheetHeaders();
     };
 
-    if (config.folderId && row[headers.indexOf(config.fileCol)]) {
-      try {
-        const folder = DriveApp.getFolderById(config.folderId);
-        const files = folder.getFilesByName(row[headers.indexOf(config.fileCol)]);
-        if (files.hasNext()) {
-          const file = files.next();
-          if (config.mode === 'attach') options.attachments.push(file.getBlob());
-        } else if (!config.isTest) {
-          sheet.getRange(i + 2, logIdx + 1).setValue("Error: File Not Found");
-          return; 
-        }
-      } catch(e) {
-        if (!config.isTest) sheet.getRange(i + 2, logIdx + 1).setValue("Error: Folder Access");
-        return;
+    function checkPerms() {
+      const id = document.getElementById('folderId').value;
+      google.script.run.withSuccessHandler(msg => alert(msg)).checkPermissions(id);
+    }
+
+    function clearData() {
+      if(confirm("Clear 'Log Sent' and 'Drive Link' columns?")) {
+        google.script.run.withSuccessHandler(msg => alert(msg)).clearLogs();
       }
     }
 
-    MailApp.sendEmail(recipient, config.subjectLine, body, options);
-    if (!config.isTest) sheet.getRange(i + 2, logIdx + 1).setValue(new Date());
-    PropertiesService.getUserProperties().setProperty('mergeProgress', `${i + 1}/${total}`);
-  });
-  return config.isTest ? "Test email sent!" : "Merge Complete!";
-}
+    function getLinks() {
+      const fId = document.getElementById('folderId').value;
+      const fCol = document.getElementById('fileCol').value;
+      if(!fId || !fCol) { alert("Enter Folder ID and Filename Column first."); return; }
+      google.script.run.withSuccessHandler(m => alert(m)).generateDriveLinks(fId, fCol);
+    }
 
-function getProgress() {
-  return PropertiesService.getUserProperties().getProperty('mergeProgress') || "0/0";
-}
+    function save() {
+      const config = {
+        emailCol: document.getElementById('emailCol').value,
+        fileCol: document.getElementById('fileCol').value,
+        replyTo: document.getElementById('replyTo').value,
+        cc: document.getElementById('cc').value,
+        bcc: document.getElementById('bcc').value,
+        subjectLine: document.getElementById('subject').value,
+        messageBody: document.getElementById('message').value,
+        folderId: document.getElementById('folderId').value,
+        mode: document.querySelector('input[name="mode"]:checked').value
+      };
+      google.script.run.withSuccessHandler(msg => alert(msg)).saveSettings(config);
+    }
+
+    function run(isTest) {
+      document.getElementById('statusFooter').style.display = 'block';
+      const config = {
+        emailCol: document.getElementById('emailCol').value,
+        fileCol: document.getElementById('fileCol').value,
+        replyTo: document.getElementById('replyTo').value,
+        cc: document.getElementById('cc').value,
+        bcc: document.getElementById('bcc').value,
+        subjectLine: document.getElementById('subject').value,
+        messageBody: document.getElementById('message').value,
+        folderId: document.getElementById('folderId').value,
+        mode: document.querySelector('input[name="mode"]:checked').value,
+        isTest: isTest
+      };
+
+      const timer = setInterval(() => {
+        google.script.run.withSuccessHandler(p => document.getElementById('prog').innerText = p).getProgress();
+      }, 1000);
+
+      google.script.run.withSuccessHandler(msg => { 
+        clearInterval(timer); 
+        alert(msg); 
+        document.getElementById('statusFooter').style.display = 'none';
+      }).runMerge(config);
+    }
+  </script>
+</body>
+</html>
